@@ -26,9 +26,9 @@ The project is implemented as a **pure client-side Single Page Application (SPA)
 
 ---
 
-## 📌 GitHub Repository
+###GitHub Repository
 
-👉 https://github.com/GueshZebrehe/Emergency_Diary_main.git
+https://github.com/GueshZebrehe/Emergency_Diary_main.git
 
 ---
 
