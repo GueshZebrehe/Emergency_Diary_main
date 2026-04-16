@@ -46,6 +46,12 @@ export type EmergencyData = {
   contactRequest: string;
   gps: string;
   evidenceUrls: string;
+//===============by medhanye==============
+  // Updated / Added fields for the new schema
+  needs: string;                    // Now supports multi-select (joined with "; ")
+  trauma: string;                   // New: Visible injuries (multiple selection)
+  healthStatus: string;             // New: Health condition (free text)
+  //===============by medhanye==============
 };
 
 function addTripleIf(
@@ -56,6 +62,22 @@ function addTripleIf(
 ): void {
   if (value) {
     store.add(subject, predicate, $rdf.lit(value));
+  }
+}
+
+// Helper for multi-select fields (needs & trauma)
+function addMultiValueIf(
+  store: $rdf.IndexedFormula,
+  subject: $rdf.NamedNode,
+  predicate: $rdf.NamedNode,
+  value: string | string[] | undefined
+): void {
+  const val = typeof value === "string" 
+    ? value 
+    : Array.isArray(value) ? value.join("; ") : "";
+  
+  if (val) {
+    store.add(subject, predicate, $rdf.lit(val));
   }
 }
 
@@ -101,8 +123,6 @@ async function validateData(store: $rdf.IndexedFormula): Promise<void> {
       throw error;
     }
     console.error("Validation error:", error);
-    // Decision: Do we block save if validation SYSTEM fails (not data fail)?
-    // Let's not block for system errors, only data errors.
   }
 }
 
@@ -138,12 +158,7 @@ export async function saveEmergencyData(
   addTripleIf(store, victimNode, CDM.nationality, data.nationality);
   addTripleIf(store, victimNode, CDM.gender, data.victimGender);
   addTripleIf(store, victimNode, CDM.age, data.victimAge);
-  addTripleIf(
-    store,
-    victimNode,
-    CDM.groupNationalities,
-    data.groupNationalities,
-  );
+  addTripleIf(store, victimNode, CDM.groupNationalities, data.groupNationalities);
   addTripleIf(store, victimNode, CDM.groupGenders, data.groupGenders);
   addTripleIf(store, victimNode, CDM.groupAges, data.groupAges);
 
@@ -165,41 +180,27 @@ export async function saveEmergencyData(
   addTripleIf(store, situationNode, CDM.accommodation, data.accommodation);
   addTripleIf(store, situationNode, CDM.needs, data.accommodationNeeds);
 
-  addTripleIf(
-    store,
-    situationNode,
-    CDM.needsDescription,
-    data.needsDescription,
-  );
+  // Updated: Support multi-select for Needs
+  addMultiValueIf(store, situationNode, CDM.needs, data.needs);
+
+  addTripleIf(store, situationNode, CDM.needsDescription, data.needsDescription);
   addTripleIf(store, situationNode, CDM.captivityStatus, data.captivityStatus);
   addTripleIf(store, situationNode, CDM.helpReasons, data.helpReasons);
 
   addTripleIf(store, situationNode, CDM.extraInfo, data.extraInfo);
-  addTripleIf(
-    store,
-    situationNode,
-    CDM.contactPhoneSelf,
-    data.contactPhoneSelf,
-  );
-  addTripleIf(
-    store,
-    situationNode,
-    CDM.contactPhoneTrusted,
-    data.contactPhoneTrusted,
-  );
-  addTripleIf(
-    store,
-    situationNode,
-    CDM.contactMessenger,
-    data.contactMessenger,
-  );
-  addTripleIf(
-    store,
-    situationNode,
-    CDM.contactOtherHandles,
-    data.contactOtherHandles,
-  );
+  addTripleIf(store, situationNode, CDM.contactPhoneSelf, data.contactPhoneSelf);
+  addTripleIf(store, situationNode, CDM.contactPhoneTrusted, data.contactPhoneTrusted);
+  addTripleIf(store, situationNode, CDM.contactMessenger, data.contactMessenger);
+  addTripleIf(store, situationNode, CDM.contactOtherHandles, data.contactOtherHandles);
   addTripleIf(store, situationNode, CDM.contactRequest, data.contactRequest);
+
+
+  //===============by medhanye==============
+  // New fields: Trauma and Health Status
+  addMultiValueIf(store, situationNode, CDM.trauma, data.trauma);
+  addTripleIf(store, situationNode, CDM.healthStatus, data.healthStatus);
+//===============by medhanye==============
+
 
   addTripleIf(store, situationNode, EVIDENCE_URLS_PRED, data.evidenceUrls);
 
@@ -217,9 +218,7 @@ export async function saveEmergencyData(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to save: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
   }
 
   return fileUrl;
@@ -300,15 +299,9 @@ export async function loadEmergencyData(
 
   const extraInfo = getLiteral(situationNode, CDM.extraInfo);
   const contactPhoneSelf = getLiteral(situationNode, CDM.contactPhoneSelf);
-  const contactPhoneTrusted = getLiteral(
-    situationNode,
-    CDM.contactPhoneTrusted,
-  );
+  const contactPhoneTrusted = getLiteral(situationNode, CDM.contactPhoneTrusted);
   const contactMessenger = getLiteral(situationNode, CDM.contactMessenger);
-  const contactOtherHandles = getLiteral(
-    situationNode,
-    CDM.contactOtherHandles,
-  );
+  const contactOtherHandles = getLiteral(situationNode, CDM.contactOtherHandles);
   const contactRequest = getLiteral(situationNode, CDM.contactRequest);
 
   const evidenceUrls = getLiteral(situationNode, EVIDENCE_URLS_PRED);
@@ -350,6 +343,11 @@ export async function loadEmergencyData(
     contactRequest,
     gps,
     evidenceUrls,
+
+    // Updated fields returned
+    needs: getLiteral(situationNode, CDM.needs),
+    trauma: getLiteral(situationNode, CDM.trauma),
+    healthStatus: getLiteral(situationNode, CDM.healthStatus),
   };
 }
 
@@ -381,9 +379,7 @@ export async function saveNgoList(
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to save NGO list: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`Failed to save NGO list: ${response.status} ${response.statusText}`);
   }
 
   return fileUrl;

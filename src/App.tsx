@@ -11,6 +11,8 @@ import {
 import { loadOntology, getOntologyStore } from "./cdmnew";
 import type { EmergencyData } from "./solidDatanew";
 import * as $rdf from "rdflib";
+
+
 import {
   getSolidDataset,
   getThing,
@@ -87,6 +89,8 @@ function buildCdmDocsFromStore(store: $rdf.IndexedFormula): CdmDocs {
   const RDFS_LABEL = $rdf.sym(RDFS_NS + "label");
   const RDFS_COMMENT = $rdf.sym(RDFS_NS + "comment");
 
+  
+
   function getDoc(localName: string): CdmTermDoc {
     const subject = $rdf.sym(CDM_NS + localName);
     const labelNode = store.any(subject, RDFS_LABEL, null);
@@ -128,6 +132,11 @@ function buildCdmDocsFromStore(store: $rdf.IndexedFormula): CdmDocs {
       "needs",
       "needsDescription",
       "captivityStatus",
+
+      //=============================
+      "trauma",        // NEW: Visible injuries
+      "healthStatus",   // NEW: Health condition
+      //=============================
       "helpReasons",
       "extraInfo",
       "contactPhoneSelf",
@@ -432,6 +441,7 @@ function getPodBaseFromWebId(webId: string): string {
   }
   return `${url.origin}/`;
 }
+
 function requestGPS(): Promise<{ latitude: number; longitude: number }> {
   return new Promise((resolve, reject) => {
     if (navigator.geolocation) {
@@ -572,7 +582,10 @@ export default function App() {
       : "Human trafficking/smuggling camp",
 
     whyNeedHelp: isTigrinya ? "ንምንታይ ኢኻ/ኺ ሓገዝ ደሊኻ/ኺ?" : "Why do you need help?",
-    youCanTick: isTigrinya ? "ካብ ሓደ ንላዕሊ ኣማራጺ ምጥዋቕ ይከኣል።" : "You can tick more than one option.",
+    youCanTick: isTigrinya
+      ? "ካብ ሓደ ንላዕሊ ኣማራጺ ምጥዋቕ ይከኣል።"
+      : "You can tick more than one option.",
+
     abducted: isTigrinya ? "ተዓጊተ እየ" : "I am abducted",
     heldAgainstWill: isTigrinya
       ? "ብዘይድሌተይ እየ ተታሒዘ"
@@ -601,7 +614,6 @@ export default function App() {
       : "Enter situation description",
 
     yourNeeds: isTigrinya ? "ድሌታትካ" : "Your Needs",
-      YouTick: isTigrinya ? "ካብ ሓደ ንላዕሊ ኣማራጺ ምጥዋቕ ይከኣል።" : "You can tick more than one option.",
     health: isTigrinya ? "ጥዕና" : "Health",
     education: isTigrinya ? "ትምህርቲ" : "Education",
     shelter: isTigrinya ? "መጽለሊ" : "Shelter",
@@ -805,6 +817,25 @@ export default function App() {
       : "Please select at least one NGO",
 
     selectedLabel: isTigrinya ? "ዝተመረጸ: " : "Selected: ",
+
+//=============== ==============
+  trauma: isTigrinya ? "ጉድኣት አካል (Trauma)" : "Visible Injuries (Trauma)",
+    traumaCuts: isTigrinya ? "ቁርጥቆሽ / ቁርጥቆሽታት" : "Cuts / lacerations",
+    traumaBruises: isTigrinya ? "ጉድኣት ቆዳ" : "Bruises",
+    traumaBurns: isTigrinya ? "ቃጠሎ" : "Burns",
+    traumaFractures: isTigrinya ? "ስባር ዓጽሚ" : "Fractures",
+    traumaHeadInjury: isTigrinya ? "ጉድኣት ርእሲ" : "Head injury",
+    traumaGunshot: isTigrinya ? "ጥይት / ቁራጽ ብረት" : "Gunshot / shrapnel",
+    traumaSexualViolence: isTigrinya ? "ምልክታት ዓመጽ ብዛዕባ ዝምድና" : "Signs of sexual violence",
+    traumaDehydration: isTigrinya ? "ውሃ ማጽዋት / ምግቢ ማጽዋት" : "Dehydration / malnutrition",
+    traumaOther: isTigrinya ? "ካልእ ዝረአ ጉድኣት" : "Other visible injury",
+    //=============================
+
+  healthStatus: isTigrinya ? "ኩነታት ጥዕና" : "Health Condition",
+  enterHealthStatus: isTigrinya ? "ኩነታት ጥዕናኹም ግለጹ" : "Describe your health condition",
+  
+  
+       
   };
 
   const GENDER_VALUES = ["Female", "Male", "Other", "Prefer not to say"];
@@ -816,6 +847,7 @@ export default function App() {
     "Mixed",
     "Prefer not to say",
   ];
+
   const LOCATION_TYPE_VALUES = [
     "Refugee/IDP camp",
     "Human Trafficking/Smuggling camp",
@@ -839,6 +871,21 @@ export default function App() {
     "Spiritual support",
     "Administrative support",
   ];
+
+//=============================
+ const TRAUMA_VALUES = [
+  "Cuts / lacerations",
+  "Bruises",
+  "Burns",
+  "Fractures",
+  "Head injury",
+  "Gunshot / shrapnel",
+  "Signs of sexual violence",
+  "Dehydration / malnutrition",
+  "Other visible injury",
+];
+  //=============================
+
   const HELP_REASON_VALUES = [
     "I am abducted",
     "I am held against my will",
@@ -1067,11 +1114,18 @@ export default function App() {
 
   const [situationDescription, setSituationDescription] = useState("");
   const [accommodation, setAccommodation] = useState("");
- const [accommodationNeeds, setAccommodationNeeds] = useState("");
+  const [accommodationNeeds, setAccommodationNeeds] = useState("");
   const [needsDescription, setNeedsDescription] = useState("");
   const [captivityStatus, setCaptivityStatus] = useState("");
-const [helpReasons, setHelpReasons] = useState<string[]>([]);
+  const [helpReasons, setHelpReasons] = useState<string[]>([]);
   const [extraInfo, setExtraInfo] = useState("");
+
+
+ //============================= NEW STATES - Only for Trauma, Health Status, and Needs
+  const [needs, setNeeds] = useState<string[]>([]);
+  const [trauma, setTrauma] = useState<string[]>([]);
+  const [healthStatus, setHealthStatus] = useState("");
+  //===============by ==============
 
   const [evidenceFiles, setEvidenceFiles] = useState<File[]>([]);
   const [evidenceUploadStatus, setEvidenceUploadStatus] = useState<
@@ -1317,9 +1371,6 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
   };
 
   function toEmergencyData(): EmergencyData {
-    const safeNeeds = Array.isArray(accommodationNeeds)
-    ? accommodationNeeds
-    : [];
     const gps = latitude && longitude ? `${latitude}, ${longitude}` : "";
     return {
       recordId,
@@ -1344,7 +1395,7 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
       locationType,
       situationDescription,
       accommodation,
-    accommodationNeeds: accommodationNeeds.join(";"),
+      accommodationNeeds,
       needsDescription,
       captivityStatus,
       helpReasons: helpReasons.join("; "),
@@ -1356,14 +1407,17 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
       contactRequest,
       gps,
       evidenceUrls: evidenceUrls.join("; "),
+
+    //=============================
+      // New fields only
+      needs: needs.join("; "),
+      trauma: trauma.join("; "),
+      healthStatus,
+    //=============================
     };
   }
 
   function applyLoadedData(data: EmergencyData) {
-    
-  
-  return <div>...</div>;
-
     setRecordId(data.recordId);
     setRecordDate(data.recordDate);
     setVictimId(data.victimId);
@@ -1372,7 +1426,6 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
     setNationality(data.nationality);
     setVictimGender(data.victimGender);
     setVictimAge(data.victimAge);
-    
     setGroupNationalities(
       data.groupNationalities
         ? data.groupNationalities
@@ -1421,6 +1474,11 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
             .filter((s) => s.length > 0)
         : [],
     );
+  //===============by ============== New fields
+    setNeeds(data.needs ? data.needs.split(";").map((s) => s.trim()).filter(Boolean) : []);
+    setTrauma(data.trauma ? data.trauma.split(";").map((s) => s.trim()).filter(Boolean) : []);
+    setHealthStatus(data.healthStatus || "");
+  //=============================
   }
 
   async function handleSave() {
@@ -2797,14 +2855,15 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
                   />
                 </div>
 
-                {/* RIGHT COLUMN */}
+              {/* RIGHT COLUMN */}
                 <div>
                   <div style={{ marginTop: 16, marginBottom: 16 }}>
                     <h2>{dashboardTexts.whyNeedHelp}</h2>
                     <p style={{ fontSize: 14, marginBottom: 8 }}>
                       {dashboardTexts.youCanTick}
                     </p>
-                    {HELP_REASON_VALUES.map((reasonKey) => (
+                    {HELP_REASON_VALUES.map((reasonKey) => 
+                      (
                       <label
                         key={reasonKey}
                         style={{ display: "block", marginBottom: 4 }}
@@ -2826,7 +2885,6 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
                         {getHelpReasonLabel(reasonKey)}
                       </label>
                     ))}
-                    
                   </div>
                   <h2>{dashboardTexts.currentSituation}</h2>
                   <div style={{ marginBottom: 8 }}>
@@ -2861,40 +2919,128 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
                       }}
                     />
                   </div>
+                  
                   {/*<SimpleDropdown
                     label="Accommodation"
                     value={accommodation}
                     onChange={setAccommodation}
                     options={["House", "Apartment", "Tent", "No accommodation"]}
                   />*/}
+                 {/* <SimpleDropdown
+                    label={dashboardTexts.yourNeeds}
+                    value={accommodationNeeds}
+                    onChange={setAccommodationNeeds}
+                    options={NEEDS_VALUES}
+                    getOptionLabel={getNeedsLabel}
+                    placeholder={dashboardTexts.selectPlaceholder}
+                  />*/}
 
-  <div>
+
+
+
+
+
+
+{/* ======================NEEDS ====================== */}
+<div style={{ marginBottom: 16 }}>
   <h2>{dashboardTexts.yourNeeds}</h2>
-<p style={{ fontSize: 14, marginBottom: 8 }}>
-            {dashboardTexts.YouTick}
-                    </p>
-  {NEEDS_VALUES.map((need) => (
+  <p style={{ fontSize: 14, marginBottom: 8 }}>
+    {dashboardTexts.youCanTick}
+  </p>
+  {NEEDS_VALUES.map((n) => (
     <label
-      key={need}
+      key={n}
       style={{ display: "block", marginBottom: 4 }}
     >
       <input
         type="checkbox"
-        checked={accommodationNeeds.includes(need)}
+        checked={needs.includes(n)}
         onChange={(e) => {
-          setAccommodationNeeds((prev) =>
-            e.target.checked
-              ? [...prev, need]
-              : prev.filter((n) => n !== need)
-          );
+          if (e.target.checked) {
+            setNeeds([...needs, n]);
+          } else {
+            setNeeds(needs.filter((item) => item !== n));
+          }
         }}
         style={{ marginRight: 8 }}
       />
-      {getNeedsLabel ? getNeedsLabel(need) : need}
+      {getNeedsLabel(n)}
     </label>
   ))}
+</div>
+
+{/* ====================== HEALTH SECTION ====================== */}
+<h2>{dashboardTexts.health}</h2>
+
+{/* Trauma / Visible Injuries */}
+<div style={{ marginBottom: 16 }}>
+  <h2>{dashboardTexts.trauma}</h2>
+  <p style={{ fontSize: 14, marginBottom: 8 }}>
+    {dashboardTexts.youCanTick}
+  </p>
+  {TRAUMA_VALUES.map((item, index) => {
+    const key = ["traumaCuts", "traumaBruises", "traumaBurns", "traumaFractures",
+                 "traumaHeadInjury", "traumaGunshot", "traumaSexualViolence",
+                 "traumaDehydration", "traumaOther"][index];
+
+    return (
+      <label
+        key={item}
+        style={{ display: "block", marginBottom: 4 }}
+      >
+        <input
+          type="checkbox"
+          checked={trauma.includes(item)}
+          onChange={(e) => {
+            if (e.target.checked) {
+              setTrauma([...trauma, item]);
+            } else {
+              setTrauma(trauma.filter((t) => t !== item));
+            }
+          }}
+          style={{ marginRight: 8 }}
+        />
+        {isTigrinya ? dashboardTexts[key as keyof typeof dashboardTexts] : item}
+      </label>
+    );
+  })}
+</div>
+
+{/* Health Status - Free text */}
+<div style={{ marginBottom: 16 }}>
+  <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>
+    {dashboardTexts.healthStatus}
+  </label>
+  <textarea
+    value={healthStatus}
+    onChange={(e) => setHealthStatus(e.target.value)}
+    placeholder={dashboardTexts.enterHealthStatus}
+    style={{
+      width: "100%",
+      padding: 8,
+      border: "1px solid #ccc",
+      borderRadius: 4,
+      minHeight: 80,
+    }
+  /* ===================*/}
+  />
+</div>
+
+
+
+
+
+
+                  <div style={{ marginBottom: 8 }}>
+                    <label
+                      style={{
+                        display: "block",
+                        marginBottom: 4,
+                        fontWeight: 500,
+                      }}
+                    >
                       {dashboardTexts.moreNeedsDetails}
-                    <label>
+                    </label>
                     <textarea
                       value={needsDescription}
                       onChange={(e) => setNeedsDescription(e.target.value)}
@@ -2906,9 +3052,7 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
                         borderRadius: 4,
                         minHeight: 100,
                       }}
-                      
                     />
-                    </label>
                   </div>
                   <SimpleDropdown
                     label={dashboardTexts.captivityStatus}
@@ -2919,25 +3063,24 @@ const [helpReasons, setHelpReasons] = useState<string[]>([]);
                     hasError={validationErrors.has("captivityStatus")}
                     placeholder={dashboardTexts.selectPlaceholder}
                   />
-  {captivityStatus?.toLowerCase() === "yes" && (
-  <div style={{ marginBottom: 16 }}>
-    <h2>{dashboardTexts.captivityStatus}</h2>
 
-    <textarea
-      value={extraInfo}
-      onChange={(e) => setExtraInfo(e.target.value)}
-      placeholder={dashboardTexts.selectPlaceholder}
-      rows={3}
-      style={{
-        width: "100%",
-        padding: 8,
-        borderRadius: 4,
-        border: "1px solid #ccc",
-        resize: "vertical",
-      }}
-    />
-  </div>
-)}
+                  {/* Extra information for supporters */}
+                  <div style={{ marginBottom: 16 }}>
+                    <h2>{dashboardTexts.extraInfoQuestion}</h2>
+                    <textarea
+                      value={extraInfo}
+                      onChange={(e) => setExtraInfo(e.target.value)}
+                      placeholder={dashboardTexts.additionalInfoPlaceholder}
+                      rows={3}
+                      style={{
+                        width: "100%",
+                        padding: 8,
+                        borderRadius: 4,
+                        border: "1px solid #ccc",
+                        resize: "vertical",
+                      }}
+                    />
+                  </div>
 
                   {/* Upload pictures / proof */}
                   <div style={{ marginBottom: 16 }}>
